@@ -8,6 +8,14 @@ CURL='wget --no-check-certificate'
 
 mkdir -p $INSTALL_ROOT
 
+PYTHON_2_6=2.6.9
+PYTHON_2_7=2.7.9
+PYTHON_3_3=3.3.6
+PYTHON_3_4=3.4.2
+PY_PY=2.5.0
+SETUPTOOLS=12.0.5
+PIP=6.0.8
+
 pushd $SANDBOX
   wget ftp://ftp.cwru.edu/pub/bash/readline-6.2.tar.gz
   tar xzf readline-6.2.tar.gz
@@ -18,7 +26,7 @@ pushd $SANDBOX
   rm -rf readline-6.2.tar.gz readline-6.2
 
   # install all major cpython interpreter versions
-  for version in 2.6.9 2.7.8 3.3.5 3.4.1; do
+  for version in $PYTHON_2_6 $PYTHON_2_7 $PYTHON_3_3 $PYTHON_3_4; do
     $CURL http://python.org/ftp/python/$version/Python-$version.tgz
     tar xzf Python-$version.tgz
     pushd Python-$version
@@ -29,25 +37,25 @@ pushd $SANDBOX
   done
   
   # install pypy
-  for pypy_version in 2.2.1-osx64; do
+  for pypy_version in $PY_PY-osx64; do
     pushd $INSTALL_ROOT
       $CURL https://bitbucket.org/pypy/pypy/downloads/pypy-$pypy_version.tar.bz2
       bzip2 -cd pypy-$pypy_version.tar.bz2 | tar -xf -
       rm -f pypy-$pypy_version.tar.bz2
-      mv pypy-$pypy_version PyPy-2.2.1
+      mv pypy-$pypy_version PyPy-$PY_PY
     popd
   done
 
-  $CURL https://pypi.python.org/packages/source/s/setuptools/setuptools-3.4.4.tar.gz
-  $CURL http://pypi.python.org/packages/source/p/pip/pip-1.5.4.tar.gz
+  $CURL https://pypi.python.org/packages/source/s/setuptools/setuptools-$SETUPTOOLS.tar.gz
+  $CURL http://pypi.python.org/packages/source/p/pip/pip-$PIP.tar.gz
   
-  for interpreter in $CPY-2.6.9/bin/python2.6 \
-                     $CPY-2.7.8/bin/python2.7 \
-                     $CPY-3.3.5/bin/python3.3 \
-                     $CPY-3.4.1/bin/python3.4 \
-                     $PYPY-2.2.1/bin/pypy; do
+  for interpreter in $CPY-$PYTHON_2_6/bin/python2.6 \
+                     $CPY-$PYTHON_2_7/bin/python2.7 \
+                     $CPY-$PYTHON_3_3/bin/python3.3 \
+                     $CPY-$PYTHON_3_4/bin/python3.4 \
+                     $PYPY-$PY_PY/bin/pypy; do
     # install distribute && pip
-    for base in setuptools-3.4.4 pip-1.5.4; do
+    for base in setuptools-$SETUPTOOLS pip-$PIP; do
       tar xzf $base.tar.gz
       pushd $base
         $interpreter setup.py install
@@ -56,7 +64,7 @@ pushd $SANDBOX
     done
   done
   
-  rm -f setuptools-3.4.4.tar.gz pip-1.5.4.tar.gz
+  rm -f setuptools-$SETUPTOOLS.tar.gz pip-$PIP.tar.gz
 popd
 
 METAPATH='$PATH'
