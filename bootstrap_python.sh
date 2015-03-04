@@ -1,78 +1,93 @@
-INSTALL_ROOT=$HOME/Python
-CPY=$INSTALL_ROOT/CPython
-PYPY=$INSTALL_ROOT/PyPy
+#!/bin/bash
 
-SANDBOX=$(mktemp -d /tmp/python.XXXXXX)
+set -ex
 
-CURL='wget --no-check-certificate'
-
-mkdir -p $INSTALL_ROOT
-
-PYTHON_2_6=2.6.9
 PYTHON_2_7=2.7.9
 PYTHON_3_3=3.3.6
-PYTHON_3_4=3.4.2
+PYTHON_3_4=3.4.3
 PY_PY=2.5.0
-SETUPTOOLS=12.0.5
-PIP=6.0.8
 
-pushd $SANDBOX
-  wget ftp://ftp.cwru.edu/pub/bash/readline-6.2.tar.gz
-  tar xzf readline-6.2.tar.gz
-  pushd readline-6.2
-    ./configure --disable-shared --enable-static --prefix=$SANDBOX/readline
+EXPAT_VERSION=2.1.0
+READLINE_VERSION=6.3
+
+SANDBOX=$(mktemp -d /tmp/python.XXXXXX)
+pushd ${SANDBOX}
+  wget ftp://ftp.cwru.edu/pub/bash/readline-${READLINE_VERSION}.tar.gz
+  tar xzf readline-${READLINE_VERSION}.tar.gz
+  pushd readline-${READLINE_VERSION}
+    ./configure --disable-shared --enable-static --prefix=${SANDBOX}/readline
     make -j3 && make install
   popd
-  rm -rf readline-6.2.tar.gz readline-6.2
+  rm -rf readline-${READLINE_VERSION}.tar.gz readline-${READLINE_VERSION}
 
-  # install all major cpython interpreter versions
-  for version in $PYTHON_2_6 $PYTHON_2_7 $PYTHON_3_3 $PYTHON_3_4; do
-    $CURL http://python.org/ftp/python/$version/Python-$version.tgz
-    tar xzf Python-$version.tgz
-    pushd Python-$version
-      LDFLAGS=-L$SANDBOX/readline/lib CFLAGS=-I$SANDBOX/readline/include \
-        ./configure --prefix=$INSTALL_ROOT/CPython-$version && make -j5 && make install
-    popd
-    rm -f Python-$version.tgz
-  done
-  
-  # install pypy
-  for pypy_version in $PY_PY-osx64; do
-    pushd $INSTALL_ROOT
-      $CURL https://bitbucket.org/pypy/pypy/downloads/pypy-$pypy_version.tar.bz2
-      bzip2 -cd pypy-$pypy_version.tar.bz2 | tar -xf -
-      rm -f pypy-$pypy_version.tar.bz2
-      mv pypy-$pypy_version PyPy-$PY_PY
-    popd
-  done
-
-  $CURL https://pypi.python.org/packages/source/s/setuptools/setuptools-$SETUPTOOLS.tar.gz
-  $CURL http://pypi.python.org/packages/source/p/pip/pip-$PIP.tar.gz
-  
-  for interpreter in $CPY-$PYTHON_2_6/bin/python2.6 \
-                     $CPY-$PYTHON_2_7/bin/python2.7 \
-                     $CPY-$PYTHON_3_3/bin/python3.3 \
-                     $CPY-$PYTHON_3_4/bin/python3.4 \
-                     $PYPY-$PY_PY/bin/pypy; do
-    # install distribute && pip
-    for base in setuptools-$SETUPTOOLS pip-$PIP; do
-      tar xzf $base.tar.gz
-      pushd $base
-        $interpreter setup.py install
-      popd
-      rm -rf $base
-    done
-  done
-  
-  rm -f setuptools-$SETUPTOOLS.tar.gz pip-$PIP.tar.gz
+  wget http://downloads.sourceforge.net/project/expat/expat/${EXPAT_VERSION}/expat-${EXPAT_VERSION}.tar.gz
+  tar xzf expat-${EXPAT_VERSION}.tar.gz
+  pushd expat-${EXPAT_VERSION}
+    ./configure --disable-shared --enable-static --prefix=${SANDBOX}/expat
+    make -j3 && make install
+  popd
+  rm -rf expat-${EXPAT_VERSION}.tar.gz expat-${EXPAT_VERSION}
 popd
 
-METAPATH='$PATH'
-for path in $(ls $INSTALL_ROOT | sort -r); do
-  METAPATH=$INSTALL_ROOT/$path/bin:$METAPATH
+#TODO(Yasumoto): Move to a versioned tag
+# https://github.com/yyuu/pyenv-installer/issues/20
+curl -L https://raw.githubusercontent.com/yyuu/pyenv-installer/master/bin/pyenv-installer | bash
+
+set +x
+echo '----------------------------------------------------'
+echo 'Waiting for PATH to be updated in your shell dotfile'
+echo '----------------------------------------------------'
+echo 'Press enter when ready'
+set -x
+read -p 'Enter your shell dotfile, ~/.bash_profile by default: ' SHELL_PROFILE
+
+if [ -z ${SHELL_PROFILE} ]; then
+  source ~/.bash_profile
+else
+  eval SHELL_PROFILE=${SHELL_PROFILE}
+  source ${SHELL_PROFILE}
+fi
+
+if [ -n $(uname | grep Darwin) ]; then
+  set +x
+  echo 'Ensure you have the Xcode Command Line Tools installed'
+  echo 'https://developer.apple.com/xcode/downloads/'
+  set -x
+else
+  set +x
+  echo 'On a debian-based system, run the following:'
+  echo 'sudo apt-get install -y make build-essential libssl-dev zlib1g-dev \'
+  echo 'libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm'
+
+  echo 'On a Fedora/CentOS/RedHat system:'
+  echo 'sudo yum install zlib-devel bzip2 bzip2-devel readline-devel sqlite \'
+  echo 'sqlite-devel openssl-devel'
+  set -x
+fi
+
+for interpreter in ${PYTHON_2_7} \
+                   ${PYTHON_3_3} \
+                   ${PYTHON_3_4} \
+                   pypy-${PY_PY}; do
+  if [ -n $(uname -r | grep Darwin) ]; then
+    # pyenv actually checks for rlconf.h in CONFIGURE_OPTS
+    CONFIGURE_OPTS="CPPFLAGS=-I${SANDBOX}/readline/include/readline/rlconf.h" \
+        LDFLAGS="-L${SANDBOX}/readline/lib -L${SANDBOX}/expat/lib -lexpat -lreadline" \
+        CFLAGS="-I$(xcrun --show-sdk-path)/usr/include -I${SANDBOX}/readline/include -I${SANDBOX}/expat/include" \
+        pyenv install -v $interpreter
+  else
+    set +x
+    echo 'Warning... this has NOT been vetted on non OS X systems!'
+    set -x
+    CONFIGURE_OPTS="CPPFLAGS=-I${SANDBOX}/readline/include/readline/rlconf.h" \
+        LDFLAGS="-L${SANDBOX}/readline/lib -L${SANDBOX}/expat/lib -lexpat -lreadline" \
+        CFLAGS="-I${SANDBOX}/readline/include -I${SANDBOX}/expat/include" \
+        pyenv install -v $interpreter
+  fi
 done
 
-echo Add the following line to the end of your .bashrc:
-echo PATH=$METAPATH
-
+set +x
+echo 'Setting python2.7 as the default.'
+set -x
+pyenv global 2.7.9
 rm -rf $SANDBOX
