@@ -88,6 +88,7 @@ done
 
 set +x
 echo 'Setting python2.7 as the default.'
+echo 'Also making other interpreters available'
 set -x
-pyenv global 2.7.9
+pyenv global 2.7.9 3.3.6 3.4.3 pypy-2.5.0
 rm -rf $SANDBOX
