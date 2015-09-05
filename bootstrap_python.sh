@@ -7,7 +7,7 @@ PYPY=$INSTALL_ROOT/PyPy
 
 SANDBOX=$(mktemp -d /tmp/python.XXXXXX)
 
-CURL='wget --no-check-certificate'
+CURL=wget
 
 mkdir -p $INSTALL_ROOT
 
