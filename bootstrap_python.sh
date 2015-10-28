@@ -2,10 +2,11 @@
 
 set -ex
 
-PYTHON_2_7=2.7.9
+PYTHON_2_7=2.7.10
 PYTHON_3_3=3.3.6
 PYTHON_3_4=3.4.3
-PY_PY=2.5.0
+PYTHON_3_5=3.5.0
+PY_PY=4.0.0
 
 EXPAT_VERSION=2.1.0
 READLINE_VERSION=6.3
@@ -68,6 +69,7 @@ fi
 for interpreter in ${PYTHON_2_7} \
                    ${PYTHON_3_3} \
                    ${PYTHON_3_4} \
+                   ${PYTHON_3_5} \
                    pypy-${PY_PY}; do
   if [ -n $(uname -r | grep Darwin) ]; then
     # pyenv actually checks for rlconf.h in CONFIGURE_OPTS
@@ -90,5 +92,5 @@ set +x
 echo 'Setting python2.7 as the default.'
 echo 'Also making other interpreters available'
 set -x
-pyenv global 2.7.9 3.3.6 3.4.3 pypy-2.5.0
+pyenv global ${PYTHON_2_7} ${PYTHON_3_3} ${PYTHON_3_4} ${PYTHON_3_5} ${PY_PY}
 rm -rf $SANDBOX
