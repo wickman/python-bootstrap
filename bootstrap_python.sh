@@ -1,38 +1,14 @@
 #!/bin/bash
 
-set -ex
+set -eux
 
 PYTHON_2_7=2.7.10
 PYTHON_3_3=3.3.6
 PYTHON_3_4=3.4.3
 PYTHON_3_5=3.5.0
-PY_PY=4.0.0
+PY_PY=pypy-2.6.1
 
-EXPAT_VERSION=2.1.0
-READLINE_VERSION=6.3
-
-SANDBOX=$(mktemp -d /tmp/python.XXXXXX)
-pushd ${SANDBOX}
-  wget ftp://ftp.cwru.edu/pub/bash/readline-${READLINE_VERSION}.tar.gz
-  tar xzf readline-${READLINE_VERSION}.tar.gz
-  pushd readline-${READLINE_VERSION}
-    ./configure --disable-shared --enable-static --prefix=${SANDBOX}/readline
-    make -j3 && make install
-  popd
-  rm -rf readline-${READLINE_VERSION}.tar.gz readline-${READLINE_VERSION}
-
-  wget http://downloads.sourceforge.net/project/expat/expat/${EXPAT_VERSION}/expat-${EXPAT_VERSION}.tar.gz
-  tar xzf expat-${EXPAT_VERSION}.tar.gz
-  pushd expat-${EXPAT_VERSION}
-    ./configure --disable-shared --enable-static --prefix=${SANDBOX}/expat
-    make -j3 && make install
-  popd
-  rm -rf expat-${EXPAT_VERSION}.tar.gz expat-${EXPAT_VERSION}
-popd
-
-#TODO(Yasumoto): Move to a versioned tag
-# https://github.com/yyuu/pyenv-installer/issues/20
-curl -L https://raw.githubusercontent.com/yyuu/pyenv-installer/master/bin/pyenv-installer | bash
+curl -L https://raw.githubusercontent.com/yyuu/pyenv-installer/7dae69619b4be4d49e485f4c997212ed74fc4973/bin/pyenv-installer | bash
 
 set +x
 echo '----------------------------------------------------'
@@ -41,6 +17,11 @@ echo '----------------------------------------------------'
 echo 'Press enter when ready'
 set -x
 read -p 'Enter your shell dotfile, ~/.bash_profile by default: ' SHELL_PROFILE
+
+if [ -z ${PS1+n} ]; then
+  echo 'Setting PS1 since we are sourcing your profile for pyenv'
+  export PS1=''
+fi
 
 if [ -z ${SHELL_PROFILE} ]; then
   source ~/.bash_profile
@@ -51,7 +32,7 @@ fi
 
 if [ -n $(uname | grep Darwin) ]; then
   set +x
-  echo 'Ensure you have the Xcode Command Line Tools installed'
+  echo 'Ensure you have the Xcode Command Line Tools installed and accept the agreement'
   echo 'https://developer.apple.com/xcode/downloads/'
   set -x
 else
@@ -70,21 +51,16 @@ for interpreter in ${PYTHON_2_7} \
                    ${PYTHON_3_3} \
                    ${PYTHON_3_4} \
                    ${PYTHON_3_5} \
-                   pypy-${PY_PY}; do
+                   ${PY_PY}; do
   if [ -n $(uname -r | grep Darwin) ]; then
-    # pyenv actually checks for rlconf.h in CONFIGURE_OPTS
-    CONFIGURE_OPTS="CPPFLAGS=-I${SANDBOX}/readline/include/readline/rlconf.h" \
-        LDFLAGS="-L${SANDBOX}/readline/lib -L${SANDBOX}/expat/lib -lexpat -lreadline" \
-        CFLAGS="-I$(xcrun --show-sdk-path)/usr/include -I${SANDBOX}/readline/include -I${SANDBOX}/expat/include" \
-        pyenv install -v $interpreter
+    # Point to the zlib headers
+    # https://github.com/yyuu/pyenv/wiki/Common-build-problems#build-failed-error-the-python-zlib-extension-was-not-compiled-missing-the-zlib
+    CFLAGS="-I$(xcrun --show-sdk-path)/usr/include" pyenv install -v $interpreter
   else
     set +x
     echo 'Warning... this has NOT been vetted on non OS X systems!'
     set -x
-    CONFIGURE_OPTS="CPPFLAGS=-I${SANDBOX}/readline/include/readline/rlconf.h" \
-        LDFLAGS="-L${SANDBOX}/readline/lib -L${SANDBOX}/expat/lib -lexpat -lreadline" \
-        CFLAGS="-I${SANDBOX}/readline/include -I${SANDBOX}/expat/include" \
-        pyenv install -v $interpreter
+      pyenv install -v $interpreter
   fi
 done
 
@@ -93,4 +69,3 @@ echo 'Setting python2.7 as the default.'
 echo 'Also making other interpreters available'
 set -x
 pyenv global ${PYTHON_2_7} ${PYTHON_3_3} ${PYTHON_3_4} ${PYTHON_3_5} ${PY_PY}
-rm -rf $SANDBOX
